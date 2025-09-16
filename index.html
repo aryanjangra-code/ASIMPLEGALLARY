@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beautiful Image Gallery</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        /* CSS Variables for easy theme management */
+        :root {
+            --background-color: #f4f7f6;
+            --text-color: #333;
+            --header-color: #222;
+            --accent-color: #007bff;
+            --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            --border-radius: 12px;
+        }
+
+        /* General Styling and Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            padding: 1rem 2rem;
+        }
+
+        h1 {
+            color: var(--header-color);
+            text-align: center;
+            margin-bottom: 2rem;
+            font-weight: 600;
+        }
+        
+        /* Loader Styling */
+        .loader {
+            text-align: center;
+            font-size: 1.5rem;
+            padding: 4rem;
+        }
+
+        /* Gallery Container - Using CSS Grid for responsiveness */
+        .gallery-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+            padding: 1rem;
+        }
+
+        .gallery-image {
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 250px;
+        }
+        
+        .gallery-image:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .gallery-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Changed from contain to cover for a fuller look */
+            display: block;
+        }
+
+        /* Modal (Popup) Styling */
+        .modal-overlay {
+            position: fixed;
+            inset: 0; /* a shorthand for top: 0; right: 0; bottom: 0; left: 0; */
+            background-color: rgba(0, 0, 0, 0.75);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none; /* Can't click on it when hidden */
+            transition: opacity 0.3s ease;
+            z-index: 100;
+        }
+        
+        .modal-overlay.visible {
+            opacity: 1;
+            pointer-events: auto; /* Can click again when visible */
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            gap: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-image {
+            max-width: 60%;
+            max-height: 85vh;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .modal-info {
+            position: relative;
+            width: 300px;
+            overflow-y: auto;
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            line-height: 30px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .modal-info p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+        
+        .modal-info strong {
+            display: block;
+            color: var(--accent-color);
+            margin-bottom: 0.25rem;
+        }
+
+        /* Responsive Design */
+        @media screen and (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            .gallery-container {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 1rem;
+            }
+            .modal-content {
+                flex-direction: column;
+                padding: 1rem;
+                max-width: 95vw;
+            }
+            .modal-image {
+                max-width: 100%;
+                max-height: 40vh;
+            }
+            .modal-info {
+                width: auto;
+                max-height: 40vh;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Unsplash Image Gallery</h1>
+
+    <main class="gallery-container">
+        <p class="loader">Fetching beautiful images...</p>
+    </main>
+
+    <div class="modal-overlay">
+        <div class="modal-content">
+            <img class="modal-image" src="" alt="">
+            <div class="modal-info">
+                <button class="modal-close-btn">&times;</button>
+                <p><strong>Photographer:</strong> <span class="info-name"></span></p>
+                <p><strong>Location:</strong> <span class="info-location"></span></p>
+                <p><strong>Date:</strong> <span class="info-date"></span></p>
+                <p><strong>Description:</strong> <span class="info-description"></span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // Select all necessary elements once and store them
+            const galleryContainer = document.querySelector('.gallery-container');
+            const loader = document.querySelector('.loader');
+            const modalOverlay = document.querySelector('.modal-overlay');
+            const modalImage = document.querySelector('.modal-image');
+            const modalCloseBtn = document.querySelector('.modal-close-btn');
+            
+            // Get references for info spans
+            const infoName = document.querySelector('.info-name');
+            const infoLocation = document.querySelector('.info-location');
+            const infoDate = document.querySelector('.info-date');
+            const infoDescription = document.querySelector('.info-description');
+
+            const accessKey = 'ifXIkLpGASymRlq52PZbWdlOueq7hlVDUfFV7ILaVgA'; // Your Unsplash API key
+            const count = 30;
+            const apiUrl = `https://api.unsplash.com/photos/random?count=${count}&client_id=${accessKey}`;
+
+            // Fetch images from the API
+            async function getImages() {
+                try {
+                    const response = await fetch(apiUrl);
+                    if (!response.ok) {
+                        throw new Error(`API request failed with status ${response.status}`);
+                    }
+                    const photosArray = await response.json();
+                    return photosArray;
+                } catch (error) {
+                    console.error('Oops, something went wrong with the API:', error);
+                    galleryContainer.innerHTML = '<p class="loader">Could not load images. Please try again later.</p>';
+                }
+            }
+
+            // Display images in the gallery
+            function displayImages(photosArray) {
+                if (!photosArray || photosArray.length === 0) {
+                    galleryContainer.innerHTML = '<p class="loader">No images found.</p>';
+                    return;
+                }
+
+                // Clear the loader
+                loader.remove(); 
+
+                photosArray.forEach(photo => {
+                    const item = document.createElement('div');
+                    item.classList.add('gallery-image');
+
+                    const img = document.createElement('img');
+                    img.src = photo.urls.small;
+                    img.alt = photo.alt_description || 'Unsplash Image';
+                    
+                    // Store all necessary data in the image element's dataset
+                    img.dataset.fullUrl = photo.urls.full;
+                    img.dataset.name = photo.user.name || 'Unknown';
+                    img.dataset.location = photo.user.location || 'Not specified';
+                    img.dataset.date = new Date(photo.created_at).toLocaleDateString();
+
+                    item.appendChild(img);
+                    galleryContainer.appendChild(item);
+                });
+            }
+
+            // Function to update and open the modal
+            function openModal(imgElement) {
+                modalImage.src = imgElement.dataset.fullUrl;
+                modalImage.alt = imgElement.alt;
+                infoName.textContent = imgElement.dataset.name;
+                infoLocation.textContent = imgElement.dataset.location;
+                infoDate.textContent = imgElement.dataset.date;
+                infoDescription.textContent = imgElement.alt;
+                modalOverlay.classList.add('visible');
+            }
+
+            // Function to close the modal
+            function closeModal() {
+                modalOverlay.classList.remove('visible');
+            }
+            
+            // Main function to initialize the gallery
+            async function initializeGallery() {
+                const photos = await getImages();
+                displayImages(photos);
+            }
+
+            // Event Listeners
+            galleryContainer.addEventListener('click', (e) => {
+                if (e.target.tagName === 'IMG') {
+                    openModal(e.target);
+                }
+            });
+
+            modalCloseBtn.addEventListener('click', closeModal);
+
+            // Close modal by clicking on the overlay background
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) {
+                    closeModal();
+                }
+            });
+            
+            // Close modal by pressing the 'Escape' key for accessibility
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modalOverlay.classList.contains('visible')) {
+                    closeModal();
+                }
+            });
+
+            // Start the application
+            initializeGallery();
+        });
+    </script>
+</body>
+
+</html>
